@@ -1,24 +1,70 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const outputDiv = document.getElementById('output');
-    const startButton = document.getElementById('startButton');
-    const stopButton = document.getElementById('stopButton');
-    const restartButton = document.getElementById('restartButton');
-    const addRuleButton = document.getElementById('addRuleButton');
-    const addBatchRulesButton = document.getElementById('addBatchRulesButton');
-    const logoutButton = document.getElementById('logoutButton');
-    const localPortInput = document.getElementById('localPort');
+    const noticeEl = document.getElementById('notice');
+    const statusEl = document.getElementById('serviceStatus');
+    const statusTextEl = statusEl
+        ? (statusEl.querySelector('.status-text') || statusEl.querySelector('span:last-child'))
+        : null;
+
+    const pageInfo = document.getElementById('pageInfo');
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+
+    const listenPortInput = document.getElementById('listenPort');
     const remoteIPInput = document.getElementById('remoteIP');
     const remotePortInput = document.getElementById('remotePort');
-    const rulesInput = document.getElementById('rulesInput');
+    const batchRulesInput = document.getElementById('batchRules');
+    const batchForm = document.getElementById('batchForm');
+    const rulesTableBody = document.getElementById('rulesTableBody');
 
     let allRules = [];
     let currentPage = 1;
-    let pageSize = 10;
+    let pageSize = pageSizeSelect ? parseInt(pageSizeSelect.value, 10) || 10 : 10;
     let totalRules = 0;
+
     let nodes = [];
     let currentNodeId = -1; // -1 表示本地模式
 
-    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    let noticeTimer = null;
+
+    function showNotice(message, type) {
+        if (!noticeEl) {
+            if (type === 'error') {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+            return;
+        }
+        noticeEl.textContent = message;
+        noticeEl.classList.remove('success', 'error');
+        if (type === 'success') {
+            noticeEl.classList.add('success');
+        }
+        if (type === 'error') {
+            noticeEl.classList.add('error');
+        }
+        noticeEl.classList.add('show');
+        if (noticeTimer) {
+            clearTimeout(noticeTimer);
+        }
+        noticeTimer = setTimeout(() => {
+            noticeEl.classList.remove('show');
+        }, 4000);
+    }
+
+    function setStatus(text, isRunning) {
+        if (!statusEl) {
+            return;
+        }
+        if (statusTextEl) {
+            statusTextEl.textContent = text;
+        } else {
+            statusEl.textContent = text;
+        }
+        statusEl.classList.toggle('running', isRunning);
+        statusEl.classList.toggle('stopped', !isRunning);
+    }
 
     function isRemoteNode() {
         return currentNodeId >= 0;
@@ -67,11 +113,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            nodes = data.nodes || [];
+            nodes = Array.isArray(data.nodes) ? data.nodes : [];
 
+            const nodeSelector = document.getElementById('nodeSelector');
             if (nodes.length > 0) {
+                if (currentNodeId >= nodes.length) {
+                    currentNodeId = -1;
+                }
                 renderNodeSelector();
-                document.getElementById('nodeSelector').classList.add('visible');
+                if (nodeSelector) {
+                    nodeSelector.classList.add('visible');
+                }
+            } else if (nodeSelector) {
+                nodeSelector.classList.remove('visible');
             }
         } catch (error) {
             console.log('节点管理功能未启用');
@@ -93,175 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         nodes.forEach((node, index) => {
             const btn = document.createElement('button');
-            btn.textContent = node.name;
+            btn.textContent = node.name || `${node.host}:${node.port}`;
             btn.className = currentNodeId === index ? 'node-btn active' : 'node-btn';
             btn.onclick = () => selectNode(index);
             container.appendChild(btn);
         });
-
-        // 添加管理节点按钮
-        const manageBtn = document.createElement('button');
-        manageBtn.textContent = '⚙ 管理节点';
-        manageBtn.className = 'node-btn manage-btn';
-        manageBtn.onclick = () => showNodeManager();
-        container.appendChild(manageBtn);
     }
-
-    // 显示节点管理对话框
-    function showNodeManager() {
-        let modal = document.getElementById('nodeManagerModal');
-        if (!modal) {
-            modal = createNodeManagerModal();
-            document.body.appendChild(modal);
-        }
-        renderNodeList();
-        modal.style.display = 'flex';
-    }
-
-    // 创建节点管理模态框 - Apple Vision Pro 风格
-    function createNodeManagerModal() {
-        const modal = document.createElement('div');
-        modal.id = 'nodeManagerModal';
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal-content glass-modal">
-                <div class="modal-header">
-                    <h3>🌐 节点管理</h3>
-                    <button class="modal-close" onclick="document.getElementById('nodeManagerModal').style.display='none'">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="node-form glass-form">
-                        <h4>✨ 添加新节点</h4>
-                        <div class="form-row">
-                            <input type="text" id="nodeName" placeholder="节点名称" class="glass-input" />
-                            <input type="text" id="nodeHost" placeholder="IP 地址" class="glass-input" />
-                        </div>
-                        <div class="form-row">
-                            <input type="number" id="nodePort" placeholder="端口" value="8081" class="glass-input" />
-                            <input type="password" id="nodePassword" placeholder="面板密码" class="glass-input" />
-                        </div>
-                        <div class="form-row checkbox-row">
-                            <label class="glass-checkbox"><input type="checkbox" id="nodeHttps" /> 使用 HTTPS</label>
-                            <button class="control-btn" onclick="addNode()">➕ 添加节点</button>
-                        </div>
-                    </div>
-                    <div class="node-list-container">
-                        <h4>📋 已配置节点</h4>
-                        <div id="managedNodeList" class="managed-list"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-        return modal;
-    }
-
-    // 渲染节点列表
-    function renderNodeList() {
-        const container = document.getElementById('managedNodeList');
-        if (!container) return;
-        
-        if (nodes.length === 0) {
-            container.innerHTML = '<p class="no-nodes">暂无配置的远程节点</p>';
-            return;
-        }
-
-        container.innerHTML = nodes.map((node, index) => `
-            <div class="managed-node-item">
-                <div class="node-info">
-                    <strong>${node.name}</strong>
-                    <span>${node.host}:${node.port}</span>
-                    <span class="node-protocol">${node.https ? 'HTTPS' : 'HTTP'}</span>
-                </div>
-                <div class="node-actions">
-                    <button class="btn-test" onclick="testNode(${index})">测试</button>
-                    <button class="btn-delete" onclick="deleteNode(${index})">删除</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // 添加节点
-    window.addNode = async function() {
-        const name = document.getElementById('nodeName').value.trim();
-        const host = document.getElementById('nodeHost').value.trim();
-        const port = parseInt(document.getElementById('nodePort').value) || 8081;
-        const password = document.getElementById('nodePassword').value;
-        const https = document.getElementById('nodeHttps').checked;
-
-        if (!name || !host || !password) {
-            alert('请填写节点名称、IP地址和密码');
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/nodes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, host, port, password, https })
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                nodes = data.nodes || [];
-                renderNodeList();
-                renderNodeSelector();
-                // 清空表单
-                document.getElementById('nodeName').value = '';
-                document.getElementById('nodeHost').value = '';
-                document.getElementById('nodePort').value = '8081';
-                document.getElementById('nodePassword').value = '';
-                document.getElementById('nodeHttps').checked = false;
-                alert('节点添加成功');
-            } else {
-                alert(data.error || '添加失败');
-            }
-        } catch (error) {
-            alert('添加节点失败: ' + error.message);
-        }
-    };
-
-    // 测试节点连接
-    window.testNode = async function(index) {
-        try {
-            const response = await fetch(`/api/nodes/${index}/test`, { method: 'POST' });
-            const data = await response.json();
-            if (data.success) {
-                alert('✓ 连接成功');
-            } else {
-                alert('✗ 连接失败: ' + (data.error || '未知错误'));
-            }
-        } catch (error) {
-            alert('测试失败: ' + error.message);
-        }
-    };
-
-    // 删除节点
-    window.deleteNode = async function(index) {
-        if (!confirm(`确定要删除节点 "${nodes[index].name}" 吗？`)) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/nodes/${index}`, { method: 'DELETE' });
-            const data = await response.json();
-            if (response.ok) {
-                nodes = data.nodes || [];
-                renderNodeList();
-                renderNodeSelector();
-                // 如果删除的是当前选中的节点，切换到本机
-                if (currentNodeId === index) {
-                    selectNode(-1);
-                } else if (currentNodeId > index) {
-                    currentNodeId--;
-                }
-                alert('节点删除成功');
-            } else {
-                alert(data.error || '删除失败');
-            }
-        } catch (error) {
-            alert('删除节点失败: ' + error.message);
-        }
-    };
 
     async function selectNode(nodeId) {
         currentNodeId = nodeId;
@@ -275,23 +166,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(getStatusUrl());
             if (!response.ok) {
-                throw new Error('检查状态失败：' + response.statusText);
+                throw new Error('检查状态失败: ' + response.statusText);
             }
             const data = await response.json();
-            const statusElement = document.getElementById('serviceStatus');
-            
-            if (data.status === "启用") {
-                statusElement.innerHTML = '<span class="status-dot"></span>运行中';
-                statusElement.className = 'status-pill running';
-            } else {
-                statusElement.innerHTML = '<span class="status-dot"></span>已停止';
-                statusElement.className = 'status-pill stopped';
-            }
+            const isRunning = data.status === '启用' || data.status === '运行中';
+            const displayText = isRunning ? '运行中' : (data.status || '已停止');
+            setStatus(displayText, isRunning);
         } catch (error) {
-            console.error('状态检查失败:', error);
-            const statusElement = document.getElementById('serviceStatus');
-            statusElement.innerHTML = '<span class="status-dot"></span>未知';
-            statusElement.className = 'status-pill stopped';
+            console.error('状态检查失败', error);
+            setStatus('未知', false);
         }
     }
 
@@ -304,45 +187,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Pragma': 'no-cache'
                 },
             });
-    
+
             if (!response.ok) {
-                throw new Error('获取规则失败：' + response.statusText);
-            }
-    
-            const data = await response.json();
-            if (!Array.isArray(data.rules)) {
-                throw new Error('服务器返回的数据格式不正确');
+                throw new Error('获取规则失败: ' + response.statusText);
             }
 
-            totalRules = data.total;
+            const data = await response.json();
+            if (!Array.isArray(data.rules)) {
+                throw new Error('服务返回的数据格式不正确');
+            }
+
+            totalRules = typeof data.total === 'number' ? data.total : data.rules.length;
             allRules = data.rules.map(rule => {
                 const listen = rule.Listen || rule.listen;
                 const remote = rule.Remote || rule.remote;
                 return { listen, remote };
-            });
+            }).filter(rule => rule.listen && rule.remote);
 
             renderForwardingRules();
 
             return allRules;
         } catch (error) {
             console.error('获取规则失败:', error);
-            outputDiv.textContent = `获取转发规则失败: ${error.message}`;
+            showNotice(`获取转发规则失败: ${error.message}`, 'error');
+            allRules = [];
+            totalRules = 0;
+            renderForwardingRules();
             return [];
         }
     }
 
     function renderForwardingRules() {
-        const tbody = document.querySelector('#forwardingTable tbody');
-        tbody.innerHTML = '';
+        if (!rulesTableBody) {
+            return;
+        }
+        rulesTableBody.innerHTML = '';
+
+        if (allRules.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="5">暂无规则</td>';
+            rulesTableBody.appendChild(emptyRow);
+            updatePaginationInfo();
+            return;
+        }
 
         allRules.forEach((rule, index) => {
             const listen = rule.listen;
             const remote = rule.remote;
 
-            const localPort = listen.split(':')[1];
+            const localPort = listen.includes(':') ? listen.split(':').pop() : listen;
             const lastColonIndex = remote.lastIndexOf(':');
-            const remoteIP = remote.substring(0, lastColonIndex);
-            const remotePort = remote.substring(lastColonIndex + 1);
+            const remoteIP = lastColonIndex > -1 ? remote.substring(0, lastColonIndex) : remote;
+            const remotePort = lastColonIndex > -1 ? remote.substring(lastColonIndex + 1) : '';
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -352,10 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${remotePort}</td>
                 <td><button class="delete-btn" data-listen="${listen}">删除</button></td>
             `;
-            tbody.appendChild(row);
+            rulesTableBody.appendChild(row);
         });
 
-        document.querySelectorAll('.delete-btn').forEach(button => {
+        rulesTableBody.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
                 deleteRule(this.getAttribute('data-listen'));
             });
@@ -365,12 +261,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updatePaginationInfo() {
-        const pageInfo = document.getElementById('pageInfo');
-        const totalPages = Math.ceil(totalRules / pageSize);
-        pageInfo.textContent = `第 ${currentPage} / ${totalPages === 0 ? 1 : totalPages} 页`;
+        const totalPages = Math.max(1, Math.ceil(totalRules / pageSize));
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+            fetchForwardingRules();
+            return;
+        }
 
-        document.getElementById('prevPage').disabled = (currentPage <= 1);
-        document.getElementById('nextPage').disabled = (currentPage >= totalPages || totalPages === 0);
+        if (pageInfo) {
+            pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
+        }
+        if (prevPageBtn) {
+            prevPageBtn.disabled = currentPage <= 1;
+        }
+        if (nextPageBtn) {
+            nextPageBtn.disabled = currentPage >= totalPages;
+        }
     }
 
     function goToPrevPage() {
@@ -381,11 +287,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function goToNextPage() {
-        const totalPages = Math.ceil(totalRules / pageSize);
+        const totalPages = Math.max(1, Math.ceil(totalRules / pageSize));
         if (currentPage < totalPages) {
             currentPage++;
             fetchForwardingRules();
         }
+    }
+
+    function changePageSize() {
+        if (!pageSizeSelect) {
+            return;
+        }
+        pageSize = parseInt(pageSizeSelect.value, 10) || pageSize;
+        currentPage = 1;
+        fetchForwardingRules();
+    }
+
+    function toggleBatchForm() {
+        if (!batchForm) {
+            return;
+        }
+        batchForm.classList.toggle('visible');
     }
 
     async function deleteRule(listenAddress) {
@@ -395,39 +317,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('删除规则失败：' + response.statusText);
+                throw new Error('删除规则失败: ' + response.statusText);
             }
 
             const restartResponse = await fetch(getActionUrl('restart'), {
                 method: 'POST'
             });
             if (!restartResponse.ok) {
-                throw new Error('重启服务失败：' + restartResponse.statusText);
+                throw new Error('重启服务失败: ' + restartResponse.statusText);
             }
 
-            outputDiv.textContent = '规则已删除，服务已重启';
+            showNotice('规则已删除，服务已重启', 'success');
             await fetchForwardingRules();
             await updateServiceStatus();
         } catch (error) {
             console.error('删除失败:', error);
-            outputDiv.textContent = error.message;
+            showNotice(error.message, 'error');
         }
     }
 
     async function addRule() {
-        const localPort = localPortInput.value.trim();
+        if (!listenPortInput || !remoteIPInput || !remotePortInput) {
+            showNotice('表单未初始化', 'error');
+            return;
+        }
+
+        const localPort = listenPortInput.value.trim();
         const remoteIP = remoteIPInput.value.trim();
         const remotePort = remotePortInput.value.trim();
 
         if (!localPort || !remoteIP || !remotePort) {
-            outputDiv.textContent = '请填写所有字段';
+            showNotice('请填写所有字段', 'error');
             return;
         }
 
         try {
-            const usedPorts = new Set(allRules.map(r => r.listen.split(':')[1]));
+            const usedPorts = new Set(allRules.map(r => r.listen.split(':').pop()));
             if (usedPorts.has(localPort)) {
-                outputDiv.textContent = `端口 ${localPort} 已被占用`;
+                showNotice(`端口 ${localPort} 已被占用`, 'error');
                 return;
             }
 
@@ -443,48 +370,77 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('添加规则失败：' + response.statusText);
+                throw new Error('添加规则失败: ' + response.statusText);
             }
 
             const restartResponse = await fetch(getActionUrl('restart'), {
                 method: 'POST'
             });
             if (!restartResponse.ok) {
-                throw new Error('重启服务失败：' + restartResponse.statusText);
+                throw new Error('重启服务失败: ' + restartResponse.statusText);
             }
 
-            outputDiv.textContent = '规则添加成功，服务已重启';
-            localPortInput.value = '';
+            showNotice('规则添加成功，服务已重启', 'success');
+            listenPortInput.value = '';
             remoteIPInput.value = '';
             remotePortInput.value = '';
             await fetchForwardingRules();
             await updateServiceStatus();
         } catch (error) {
             console.error('添加失败:', error);
-            outputDiv.textContent = error.message;
+            showNotice(error.message, 'error');
         }
     }
 
+    function parseBatchLine(line) {
+        const csvParts = line.split(',').map(part => part.trim()).filter(Boolean);
+        if (csvParts.length === 3) {
+            return {
+                localPort: csvParts[0],
+                remoteAddress: `${csvParts[1]}:${csvParts[2]}`
+            };
+        }
+
+        const legacyMatch = line.match(/^(\d+):(\[.*?\]:\d+|\S+)$/);
+        if (legacyMatch) {
+            return {
+                localPort: legacyMatch[1],
+                remoteAddress: legacyMatch[2]
+            };
+        }
+
+        return null;
+    }
+
     async function addBatchRules() {
-        const rules = rulesInput.value.trim().split('\n').filter(Boolean);
-        if (rules.length === 0) {
-            outputDiv.textContent = '请输入要添加的规则';
+        if (!batchRulesInput) {
+            showNotice('表单未初始化', 'error');
             return;
         }
 
-        const usedPorts = new Set(allRules.map(r => r.listen.split(':')[1]));
+        const rules = batchRulesInput.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        if (rules.length === 0) {
+            showNotice('请输入要添加的规则', 'error');
+            return;
+        }
+
+        const usedPorts = new Set(allRules.map(r => r.listen.split(':').pop()));
         const failedRules = [];
         let hasSuccess = false;
 
         for (const rule of rules) {
-            const match = rule.match(/^(\d+):(\[.*?\]:\d+|\S+)$/);
-            if (!match) {
+            const parsed = parseBatchLine(rule);
+            if (!parsed) {
                 failedRules.push(`格式错误: ${rule}`);
                 continue;
             }
 
-            const localPort = match[1];
-            const remoteAddress = match[2];
+            const localPort = parsed.localPort;
+            const remoteAddress = parsed.remoteAddress;
 
             if (usedPorts.has(localPort)) {
                 failedRules.push(`端口 ${localPort} 已被占用`);
@@ -528,66 +484,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        rulesInput.value = '';
+        batchRulesInput.value = '';
         await fetchForwardingRules();
         await updateServiceStatus();
 
         if (failedRules.length > 0) {
-            outputDiv.textContent = `添加完成。\n失败的规则：\n${failedRules.join('\n')}`;
+            showNotice(`添加完成。失败的规则：\n${failedRules.join('\n')}`, 'error');
         } else {
-            outputDiv.textContent = '所有规则添加成功，服务已重启';
+            showNotice('所有规则添加成功，服务已重启', 'success');
         }
     }
 
-    startButton.addEventListener('click', async () => {
+    async function controlService(action) {
+        const labels = {
+            start: '启动',
+            stop: '停止',
+            restart: '重启'
+        };
         try {
-            const response = await fetch(getActionUrl('start'), {
+            const response = await fetch(getActionUrl(action), {
                 method: 'POST'
             });
             if (!response.ok) {
-                throw new Error('启动服务失败：' + response.statusText);
+                throw new Error(`${labels[action] || '操作'}服务失败: ${response.statusText}`);
             }
-            outputDiv.textContent = '服务启动成功';
+            showNotice(`服务${labels[action] || ''}成功`, 'success');
             await updateServiceStatus();
         } catch (error) {
-            console.error('启动失败:', error);
-            outputDiv.textContent = error.message;
+            console.error('服务控制失败:', error);
+            showNotice(error.message, 'error');
         }
-    });
+    }
 
-    stopButton.addEventListener('click', async () => {
-        try {
-            const response = await fetch(getActionUrl('stop'), {
-                method: 'POST'
-            });
-            if (!response.ok) {
-                throw new Error('停止服务失败：' + response.statusText);
-            }
-            outputDiv.textContent = '服务停止成功';
-            await updateServiceStatus();
-        } catch (error) {
-            console.error('停止失败:', error);
-            outputDiv.textContent = error.message;
-        }
-    });
-
-    restartButton.addEventListener('click', async () => {
-        try {
-            const response = await fetch(getActionUrl('restart'), {
-                method: 'POST'
-            });
-            if (!response.ok) {
-                throw new Error('重启服务失败：' + response.statusText);
-            }
-            outputDiv.textContent = '服务重启成功';
-            await updateServiceStatus();
-        } catch (error) {
-            console.error('重启失败:', error);
-            outputDiv.textContent = error.message;
-        }
-    });
-
-    logoutButton.addEventListener('click', async () => {
+    async function logout() {
         try {
             const response = await fetch('/logout', {
                 method: 'POST'
@@ -595,28 +524,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 window.location.href = '/login';
             } else {
-                throw new Error('登出失败：' + response.statusText);
+                throw new Error('登出失败: ' + response.statusText);
             }
         } catch (error) {
             console.error('登出失败:', error);
-            outputDiv.textContent = error.message;
+            showNotice(error.message, 'error');
         }
-    });
+    }
 
-    addRuleButton.addEventListener('click', addRule);
-    addBatchRulesButton.addEventListener('click', addBatchRules);
+    window.goToPrevPage = goToPrevPage;
+    window.goToNextPage = goToNextPage;
+    window.changePageSize = changePageSize;
+    window.toggleBatchForm = toggleBatchForm;
+    window.addRule = addRule;
+    window.addBatchRules = addBatchRules;
+    window.controlService = controlService;
+    window.logout = logout;
 
-    document.getElementById('prevPage').addEventListener('click', goToPrevPage);
-    document.getElementById('nextPage').addEventListener('click', goToNextPage);
-
-    pageSizeSelect.addEventListener('change', () => {
-        pageSize = parseInt(pageSizeSelect.value, 10);
-        currentPage = 1;
-        fetchForwardingRules();
-    });
     loadNodes();
     fetchForwardingRules();
     updateServiceStatus();
-    
+
     setInterval(updateServiceStatus, 15000);
 });

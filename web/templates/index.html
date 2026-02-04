@@ -162,6 +162,29 @@
             margin-bottom: 25px;
             flex-wrap: wrap;
         }
+        .notice {
+            margin: 12px 0 20px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: rgba(102, 126, 234, 0.08);
+            color: #3f4a8a;
+            font-size: 13px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            display: none;
+        }
+        .notice.show {
+            display: block;
+        }
+        .notice.success {
+            background: rgba(82, 196, 26, 0.12);
+            border-color: rgba(82, 196, 26, 0.3);
+            color: #2f7a11;
+        }
+        .notice.error {
+            background: rgba(255, 77, 79, 0.12);
+            border-color: rgba(255, 77, 79, 0.3);
+            color: #a8071a;
+        }
         .control-btn {
             padding: 12px 24px;
             border-radius: 12px;
@@ -729,9 +752,9 @@
             <div class="nav-actions">
                 <div id="serviceStatus" class="status-pill stopped">
                     <span class="status-dot"></span>
-                    <span>已停止</span>
+                    <span class="status-text">已停止</span>
                 </div>
-                <button class="nav-icon" onclick="location.href='/logout'" title="登出">🚪</button>
+                <button class="nav-icon" onclick="logout()" title="登出">🚪</button>
             </div>
         </div>
 
@@ -749,6 +772,7 @@
                 <button class="control-btn danger" onclick="controlService('stop')">⏹️ 停止服务</button>
                 <button class="control-btn secondary" onclick="controlService('restart')">🔄 重启服务</button>
             </div>
+            <div id="notice" class="notice" aria-live="polite"></div>
 
             <!-- 规则表格 -->
             <div class="section-title">📋 当前转发规则</div>
@@ -763,9 +787,9 @@
                     </select>
                 </div>
                 <div class="page-controls">
-                    <button class="page-btn" onclick="goToPrevPage()">上一页</button>
+                    <button id="prevPage" class="page-btn" onclick="goToPrevPage()">上一页</button>
                     <span id="pageInfo" class="page-info">第 1 / 1 页</span>
-                    <button class="page-btn" onclick="goToNextPage()">下一页</button>
+                    <button id="nextPage" class="page-btn" onclick="goToNextPage()">下一页</button>
                 </div>
             </div>
 
