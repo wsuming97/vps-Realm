@@ -3,190 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Realm 转发管理面板 - 登录</title>
+    <title>Realm 管理面板 - 登录</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-            height: 100vh;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
         .login-container {
-            max-width: 400px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(50px);
+            -webkit-backdrop-filter: blur(50px);
+            border-radius: 28px;
+            padding: 50px 40px;
             width: 100%;
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            color: #333;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
             text-align: center;
-            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 35px;
         }
         .form-group {
             margin-bottom: 20px;
+            text-align: left;
         }
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            font-size: 12px;
             color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        .password-input-wrapper {
+        .password-wrapper {
             position: relative;
         }
-        .password-toggle {
+        .password-wrapper input {
+            width: 100%;
+            padding: 15px 50px 15px 18px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 14px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .password-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+        .toggle-password {
             position: absolute;
-            right: 10px;
+            right: 15px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
+            font-size: 18px;
             cursor: pointer;
-            color: #666;
-            padding: 5px;
-            font-size: 20px;
+            opacity: 0.5;
+            transition: opacity 0.2s;
         }
-        button[type="submit"] {
+        .toggle-password:hover {
+            opacity: 1;
+        }
+        .login-btn {
             width: 100%;
-            padding: 12px;
-            background-color: #28a745;
-            color: white;
+            padding: 16px;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
             font-size: 16px;
-            transition: background-color 0.3s;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
         }
-        button[type="submit"]:hover {
-            background-color: #218838;
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        }
+        .login-btn:active {
+            transform: translateY(-1px);
         }
         .error-message {
-            color: #dc3545;
-            margin-top: 15px;
-            text-align: center;
-            min-height: 20px;
+            background: rgba(255, 77, 79, 0.1);
+            color: #ff4d4f;
+            padding: 12px 16px;
+            border-radius: 10px;
             font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid rgba(255, 77, 79, 0.2);
         }
-        .loading {
-            opacity: 0.7;
-            cursor: not-allowed;
+        .error-message.visible {
+            display: block;
+        }
+        .footer-text {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer-text a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+        /* 加载动画 */
+        .login-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        .login-btn.loading::after {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
         }
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #28a745;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <h1>Realm 转发管理面板</h1>
+        <div class="logo">🚀</div>
+        <h1 class="title">Realm 管理面板</h1>
+        <p class="subtitle">端口转发管理系统</p>
+        
+        <div id="errorMessage" class="error-message"></div>
+        
         <form id="loginForm">
             <div class="form-group">
-                <div class="password-input-wrapper">
+                <label>访问密码</label>
+                <div class="password-wrapper">
                     <input 
                         type="password" 
                         id="password" 
-                        placeholder="请输入密码" 
-                        required 
+                        placeholder="请输入密码"
                         autocomplete="current-password"
-                        minlength="4"
+                        required
                     >
-                    <button 
-                        type="button" 
-                        class="password-toggle" 
-                        id="togglePassword" 
-                        aria-label="切换密码显示"
-                    >👁</button>
+                    <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
                 </div>
             </div>
-            <button type="submit" id="submitButton">登录</button>
-            <div class="loading-spinner" id="loadingSpinner"></div>
-            <div id="errorMessage" class="error-message"></div>
+            <button type="submit" class="login-btn" id="loginBtn">登 录</button>
         </form>
+        
+        <p class="footer-text">
+            Powered by <a href="https://github.com/wsuming97/vps-Realm" target="_blank">Realm Panel</a>
+        </p>
     </div>
 
     <script>
-        const form = document.getElementById('loginForm');
-        const passwordInput = document.getElementById('password');
-        const toggleButton = document.getElementById('togglePassword');
-        const submitButton = document.getElementById('submitButton');
-        const errorMessage = document.getElementById('errorMessage');
-        const loadingSpinner = document.getElementById('loadingSpinner');
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const btn = document.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
 
-        // 密码显示切换
-        toggleButton.addEventListener('click', function() {
-            const type = passwordInput.type === 'password' ? 'text' : 'password';
-            passwordInput.type = type;
-            this.textContent = type === 'password' ? '👁' : '👁‍🗨';
-        });
-
-        // 登录表单提交
-        form.addEventListener('submit', async function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            errorMessage.textContent = '';
-            submitButton.disabled = true;
-            submitButton.classList.add('loading');
-            loadingSpinner.style.display = 'block';
+            
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // 隐藏错误消息
+            errorMessage.classList.remove('visible');
+            
+            // 显示加载状态
+            loginBtn.classList.add('loading');
+            loginBtn.textContent = '登录中';
             
             try {
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ 
-                        password: passwordInput.value 
-                    }),
+                    body: JSON.stringify({ password })
                 });
-
+                
                 const data = await response.json();
                 
                 if (response.ok) {
+                    // 登录成功，跳转到主页
                     window.location.href = '/';
                 } else {
-                    throw new Error(data.error || '密码错误');
+                    // 显示错误消息
+                    errorMessage.textContent = data.error || '登录失败，请重试';
+                    errorMessage.classList.add('visible');
+                    
+                    // 抖动效果
+                    document.querySelector('.login-container').style.animation = 'shake 0.5s';
+                    setTimeout(() => {
+                        document.querySelector('.login-container').style.animation = '';
+                    }, 500);
                 }
             } catch (error) {
-                errorMessage.textContent = error.message || '登录失败，请重试';
+                errorMessage.textContent = '网络错误，请检查连接';
+                errorMessage.classList.add('visible');
             } finally {
-                submitButton.disabled = false;
-                submitButton.classList.remove('loading');
-                loadingSpinner.style.display = 'none';
+                // 恢复按钮状态
+                loginBtn.classList.remove('loading');
+                loginBtn.textContent = '登 录';
             }
         });
 
-        // 页面加载完成后聚焦密码输入框
-        window.addEventListener('load', () => {
-            passwordInput.focus();
-        });
-
-        // 清除之前的错误信息
-        passwordInput.addEventListener('input', () => {
-            errorMessage.textContent = '';
+        // 按回车提交
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
         });
     </script>
+
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+    </style>
 </body>
 </html>

@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (nodes.length > 0) {
                 renderNodeSelector();
-                document.getElementById('nodeSelector').style.display = 'block';
+                document.getElementById('nodeSelector').classList.add('visible');
             }
         } catch (error) {
             console.log('节点管理功能未启用');
@@ -118,36 +118,36 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
     }
 
-    // 创建节点管理模态框
+    // 创建节点管理模态框 - Apple Vision Pro 风格
     function createNodeManagerModal() {
         const modal = document.createElement('div');
         modal.id = 'nodeManagerModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content glass-modal">
                 <div class="modal-header">
-                    <h3>节点管理</h3>
+                    <h3>🌐 节点管理</h3>
                     <button class="modal-close" onclick="document.getElementById('nodeManagerModal').style.display='none'">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="node-form">
-                        <h4>添加新节点</h4>
+                    <div class="node-form glass-form">
+                        <h4>✨ 添加新节点</h4>
                         <div class="form-row">
-                            <input type="text" id="nodeName" placeholder="节点名称" />
-                            <input type="text" id="nodeHost" placeholder="IP 地址" />
+                            <input type="text" id="nodeName" placeholder="节点名称" class="glass-input" />
+                            <input type="text" id="nodeHost" placeholder="IP 地址" class="glass-input" />
                         </div>
                         <div class="form-row">
-                            <input type="number" id="nodePort" placeholder="端口 (默认 8081)" value="8081" />
-                            <input type="password" id="nodePassword" placeholder="面板密码" />
+                            <input type="number" id="nodePort" placeholder="端口" value="8081" class="glass-input" />
+                            <input type="password" id="nodePassword" placeholder="面板密码" class="glass-input" />
                         </div>
-                        <div class="form-row">
-                            <label><input type="checkbox" id="nodeHttps" /> 使用 HTTPS</label>
-                            <button class="btn-add-node" onclick="addNode()">添加节点</button>
+                        <div class="form-row checkbox-row">
+                            <label class="glass-checkbox"><input type="checkbox" id="nodeHttps" /> 使用 HTTPS</label>
+                            <button class="control-btn" onclick="addNode()">➕ 添加节点</button>
                         </div>
                     </div>
                     <div class="node-list-container">
-                        <h4>已配置节点</h4>
-                        <div id="managedNodeList"></div>
+                        <h4>📋 已配置节点</h4>
+                        <div id="managedNodeList" class="managed-list"></div>
                     </div>
                 </div>
             </div>
@@ -281,17 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusElement = document.getElementById('serviceStatus');
             
             if (data.status === "启用") {
-                statusElement.textContent = "运行中";
-                statusElement.className = 'status-tag running';
+                statusElement.innerHTML = '<span class="status-dot"></span>运行中';
+                statusElement.className = 'status-pill running';
             } else {
-                statusElement.textContent = "已停止";
-                statusElement.className = 'status-tag stopped';
+                statusElement.innerHTML = '<span class="status-dot"></span>已停止';
+                statusElement.className = 'status-pill stopped';
             }
         } catch (error) {
             console.error('状态检查失败:', error);
             const statusElement = document.getElementById('serviceStatus');
-            statusElement.textContent = "未知";
-            statusElement.className = 'status-tag stopped';
+            statusElement.innerHTML = '<span class="status-dot"></span>未知';
+            statusElement.className = 'status-pill stopped';
         }
     }
 

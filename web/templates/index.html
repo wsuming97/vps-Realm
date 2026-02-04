@@ -5,168 +5,375 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realm 转发管理面板</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-attachment: fixed;
             padding: 20px;
-            background-color: #f4f4f4;
         }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            max-width: 800px;
+        /* 玻璃态容器 */
+        .glass-container {
+            max-width: 1000px;
             margin: 0 auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        button {
-            padding: 10px 15px;
-            margin: 5px;
-            border: none;
-            border-radius: 5px;
-            background-color: #28a745;
+        /* 顶部导航胶囊 */
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 50px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .nav-title {
+            font-size: 18px;
+            font-weight: 600;
             color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .nav-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .nav-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
             cursor: pointer;
-            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            color: white;
         }
-        button:hover {
-            background-color: #218838;
+        .nav-icon:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
         }
-        .delete-btn {
-            background-color: #dc3545;
+        .status-pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        .delete-btn:hover {
-            background-color: #c82333;
+        .status-pill.running {
+            background: rgba(82, 196, 26, 0.3);
+            color: #52c41a;
+            border: 1px solid rgba(82, 196, 26, 0.5);
         }
-        table {
+        .status-pill.stopped {
+            background: rgba(255, 77, 79, 0.3);
+            color: #ff4d4f;
+            border: 1px solid rgba(255, 77, 79, 0.5);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        /* 节点选择器 */
+        .node-selector {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 24px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: none;
+        }
+        .node-selector.visible {
+            display: block;
+        }
+        .node-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        #nodeList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .node-btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .node-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .node-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .node-btn.manage-btn {
+            background: rgba(0, 0, 0, 0.2);
+            border-style: dashed;
+        }
+        /* 主面板 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(50px);
+            -webkit-backdrop-filter: blur(50px);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+        /* 控制按钮组 */
+        .control-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .control-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .control-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        .control-btn.danger {
+            background: rgba(255, 77, 79, 0.1);
+            color: #ff4d4f;
+        }
+        .control-btn.danger:hover {
+            background: #ff4d4f;
+            color: white;
+        }
+        .control-btn.secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: #666;
+        }
+        .control-btn.secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        /* 表格区域 */
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rules-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-bottom: 20px;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
+        .rules-table th {
             text-align: left;
+            padding: 12px 15px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: 8px;
         }
-        th {
-            background-color: #f2f2f2;
+        .rules-table th:first-child { border-radius: 8px 0 0 8px; }
+        .rules-table th:last-child { border-radius: 0 8px 8px 0; }
+        .rules-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            color: #333;
+            font-size: 14px;
         }
-        .form-group {
+        .rules-table tr:hover td {
+            background: rgba(102, 126, 234, 0.03);
+        }
+        .delete-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 77, 79, 0.1);
+            color: #ff4d4f;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .delete-btn:hover {
+            background: #ff4d4f;
+            color: white;
+        }
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 12px;
+        }
+        .page-info {
+            color: #666;
+            font-size: 14px;
+        }
+        .page-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .page-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: white;
+            color: #667eea;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+        }
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .page-size-select select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+            font-size: 13px;
+            color: #333;
+        }
+        /* 添加规则表单 */
+        .add-form {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             margin-bottom: 15px;
         }
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .form-group input, .form-group textarea {
-            width: calc(100% - 22px);
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        #output {
-            margin-top: 20px;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            min-height: 50px;
-            white-space: pre-wrap;
-        }
-        .status-tag {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 8px;
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
             font-size: 14px;
-            line-height: 20px;
-            border-radius: 4px;
-            margin-left: 10px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-submit {
+            padding: 12px 30px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: 14px;
             font-weight: 500;
-        }
-        .status-tag.running {
-            background-color: #52c41a;
-            color: white;
-        }
-        .status-tag.stopped {
-            background-color: #ff4d4f;
-            color: white;
-        }
-        .status-wrapper {
-            display: inline-flex;
-            align-items: center;
-            margin-left: 15px;
-        }
-        .status-label {
-            color: #666;
-            margin-right: 8px;
-        }
-        .button-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        #logoutButton {
-            background-color: #6c757d;
-        }
-        #logoutButton:hover {
-            background-color: #5a6268;
-        }
-        /* 分页区域 */
-        .pagination {
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-        }
-        .pagination button {
-            margin: 0 5px;
-            padding: 8px 12px;
-        }
-        .page-info {
-            margin: 0 10px;
-            color: #555;
-        }
-        /* 每页条数下拉框样式 */
-        .page-size-select {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-        }
-        .page-size-select label {
-            margin-right: 5px;
-        }
-            .node-btn {
-            padding: 8px 16px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-            color: #333;
             cursor: pointer;
             transition: all 0.3s;
         }
-        .node-btn:hover {
-            border-color: #28a745;
-            background-color: #f6fff8;
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
         }
-        .node-btn.active {
-            background-color: #28a745;
-            color: white;
-            border-color: #28a745;
+        /* 批量添加 */
+        .batch-toggle {
+            color: #667eea;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        /* 节点管理按钮样式 */
-        .manage-btn {
-            background-color: #6c757d !important;
-            border-color: #6c757d !important;
+        .batch-toggle:hover {
+            text-decoration: underline;
         }
-        .manage-btn:hover {
-            background-color: #5a6268 !important;
+        .batch-form {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed rgba(102, 126, 234, 0.3);
         }
-        /* 模态框样式 */
+        .batch-form.visible {
+            display: block;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        /* 模态框样式 - 继承空间风格 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -174,233 +381,440 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
         .modal-content {
-            background: white;
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(50px);
+            border-radius: 24px;
             width: 90%;
-            max-width: 600px;
+            max-width: 550px;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.6);
         }
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            background: #f8f9fa;
-            border-radius: 8px 8px 0 0;
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
         .modal-header h3 {
             margin: 0;
             color: #333;
+            font-size: 18px;
         }
         .modal-close {
-            background: none;
+            background: rgba(0,0,0,0.05);
             border: none;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
             color: #666;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-        }
-        .modal-close:hover {
-            color: #333;
-        }
-        .modal-body {
-            padding: 20px;
-        }
-        .node-form h4, .node-list-container h4 {
-            margin: 0 0 15px 0;
-            color: #333;
-            font-size: 16px;
-        }
-        .form-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .form-row input[type="text"],
-        .form-row input[type="number"],
-        .form-row input[type="password"] {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .form-row label {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 5px;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: rgba(255, 77, 79, 0.1);
+            color: #ff4d4f;
+        }
+        .modal-body {
+            padding: 25px;
+        }
+        .node-form h4 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .modal-form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .modal-form-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .modal-form-row input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .modal-form-row label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-size: 14px;
             color: #666;
         }
         .btn-add-node {
-            background: #28a745;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 10px 20px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 14px;
+            transition: all 0.3s;
         }
         .btn-add-node:hover {
-            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         .node-list-container {
-            margin-top: 20px;
+            margin-top: 25px;
             padding-top: 20px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .node-list-container h4 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
         }
         .managed-node-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            margin-bottom: 8px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            margin-bottom: 10px;
         }
         .node-info {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
         .node-info strong {
             color: #333;
         }
         .node-info span {
-            color: #666;
+            color: #888;
             font-size: 13px;
         }
         .node-protocol {
-            background: #e9ecef;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
         }
         .node-actions {
             display: flex;
             gap: 8px;
         }
         .btn-test {
-            background: #17a2b8;
-            color: white;
+            background: rgba(23, 162, 184, 0.1);
+            color: #17a2b8;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
+            transition: all 0.2s;
         }
         .btn-test:hover {
-            background: #138496;
+            background: #17a2b8;
+            color: white;
         }
         .btn-delete {
-            background: #dc3545;
-            color: white;
+            background: rgba(255, 77, 79, 0.1);
+            color: #ff4d4f;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
+            transition: all 0.2s;
         }
         .btn-delete:hover {
-            background: #c82333;
+            background: #ff4d4f;
+            color: white;
         }
         .no-nodes {
             color: #999;
             text-align: center;
-            padding: 20px;
+            padding: 30px;
+            font-size: 14px;
         }
-</style>
+        /* 模态框 - Apple Vision Pro 风格 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(50px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: modalSlide 0.3s ease;
+        }
+        @keyframes modalSlide {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        .modal-body {
+            padding: 24px;
+            max-height: calc(80vh - 80px);
+            overflow-y: auto;
+        }
+        .glass-form {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .glass-form h4 {
+            margin: 0 0 16px 0;
+            font-size: 15px;
+            color: #667eea;
+        }
+        .glass-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.2s;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .glass-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+        }
+        .glass-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+        .node-list-container h4 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            color: #333;
+        }
+        .managed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .managed-node-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+        .managed-node-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .node-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .node-info strong {
+            font-size: 14px;
+            color: #333;
+        }
+        .node-info span {
+            font-size: 12px;
+            color: #888;
+        }
+        .node-protocol {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        .node-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .glass-panel { padding: 20px; }
+            .control-group { flex-direction: column; }
+            .control-btn { width: 100%; justify-content: center; }
+            .form-row { grid-template-columns: 1fr; }
+            .glass-modal { width: 95%; margin: 10px; }
+            .checkbox-row { flex-direction: column; gap: 12px; align-items: stretch; }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Realm 转发管理面板</h1>
-
-                <div id="nodeSelector" style="margin-bottom: 20px; display: none;">
-            <h3>选择节点</h3>
-            <div id="nodeList" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <!-- 节点按钮动态生成 -->
+    <div class="glass-container">
+        <!-- 顶部导航 -->
+        <div class="glass-nav">
+            <div class="nav-title">🚀 Realm 转发管理</div>
+            <div class="nav-actions">
+                <div id="serviceStatus" class="status-pill stopped">
+                    <span class="status-dot"></span>
+                    <span>已停止</span>
+                </div>
+                <button class="nav-icon" onclick="location.href='/logout'" title="登出">🚪</button>
             </div>
         </div>
 
-        <div class="button-group">
-            <button id="startButton">启动服务</button>
-            <button id="stopButton">停止服务</button>
-            <button id="restartButton">重启服务</button>
-            <button id="logoutButton">登出</button>
-            <div class="status-wrapper">
-                <span class="status-label">状态:</span>
-                <span id="serviceStatus" class="status-tag">检查中...</span>
+        <!-- 节点选择器 -->
+        <div id="nodeSelector" class="node-selector">
+            <div class="node-label">选择节点</div>
+            <div id="nodeList"></div>
+        </div>
+
+        <!-- 主面板 -->
+        <div class="glass-panel">
+            <!-- 控制按钮 -->
+            <div class="control-group">
+                <button class="control-btn primary" onclick="controlService('start')">▶️ 启动服务</button>
+                <button class="control-btn danger" onclick="controlService('stop')">⏹️ 停止服务</button>
+                <button class="control-btn secondary" onclick="controlService('restart')">🔄 重启服务</button>
+            </div>
+
+            <!-- 规则表格 -->
+            <div class="section-title">📋 当前转发规则</div>
+            
+            <div class="pagination">
+                <div class="page-size-select">
+                    <span>每页显示：</span>
+                    <select id="pageSizeSelect" onchange="changePageSize()">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <div class="page-controls">
+                    <button class="page-btn" onclick="goToPrevPage()">上一页</button>
+                    <span id="pageInfo" class="page-info">第 1 / 1 页</span>
+                    <button class="page-btn" onclick="goToNextPage()">下一页</button>
+                </div>
+            </div>
+
+            <table class="rules-table">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>中转端口</th>
+                        <th>落地机 IP</th>
+                        <th>目标端口</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="rulesTableBody">
+                    <!-- 动态生成 -->
+                </tbody>
+            </table>
+
+            <!-- 添加规则表单 -->
+            <div class="add-form">
+                <div class="section-title">➕ 添加转发规则</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中转端口</label>
+                        <input type="text" id="listenPort" placeholder="如：10000">
+                    </div>
+                    <div class="form-group">
+                        <label>落地机 IP</label>
+                        <input type="text" id="remoteIP" placeholder="如：192.168.1.1">
+                    </div>
+                    <div class="form-group">
+                        <label>目标端口</label>
+                        <input type="text" id="remotePort" placeholder="如：443">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-submit" onclick="addRule()">添加规则</button>
+                    <span class="batch-toggle" onclick="toggleBatchForm()">📦 批量添加</span>
+                </div>
+
+                <div id="batchForm" class="batch-form">
+                    <div class="form-group">
+                        <label>批量规则（每行一条：中转端口,落地IP,目标端口）</label>
+                        <textarea id="batchRules" placeholder="10000,192.168.1.1,443&#10;10001,192.168.1.2,80&#10;10002,192.168.1.3,22"></textarea>
+                    </div>
+                    <button class="btn-submit" onclick="addBatchRules()">批量添加</button>
+                </div>
             </div>
         </div>
-
-        <div id="output"></div>
-
-        <h2>当前转发规则</h2>
-        <!-- 分页控制区 -->
-        <div class="pagination">
-            <div class="page-size-select">
-                <label for="pageSizeSelect">每页显示:</label>
-                <select id="pageSizeSelect">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                </select>
-            </div>
-            <button id="prevPage">上一页</button>
-            <span id="pageInfo" class="page-info"></span>
-            <button id="nextPage">下一页</button>
-        </div>
-
-        <table id="forwardingTable">
-            <thead>
-                <tr>
-                    <th>序号</th>
-                    <th>中转端口</th>
-                    <th>落地机 IP</th>
-                    <th>目标端口</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- 动态填充转发规则 -->
-            </tbody>
-        </table>
-
-        <h2>添加转发规则</h2>
-        <div class="form-group">
-            <label for="localPort">中转端口:</label>
-            <input type="number" id="localPort" required>
-        </div>
-        <div class="form-group">
-            <label for="remoteIP">落地机 IP:</label>
-            <input type="text" id="remoteIP" required>
-        </div>
-        <div class="form-group">
-            <label for="remotePort">目标端口:</label>
-            <input type="number" id="remotePort" required>
-        </div>
-        <button id="addRuleButton">添加规则</button>
-
-        <h2>批量添加转发规则</h2>
-        <div class="form-group">
-            <label for="rulesInput">请输入转发规则（每行一个规则）：</label>
-            <p>IPv4 格式：中转端口:落地机IP:目标端口</p>
-            <p>IPv6 格式：中转端口:[落地机IPv6]:目标端口</p>
-            <textarea id="rulesInput" rows="5"></textarea>
-        </div>
-        <button id="addBatchRulesButton">批量添加规则</button>
     </div>
 
     <script src="/static/app.js"></script>
