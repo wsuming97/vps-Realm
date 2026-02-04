@@ -1,1 +1,14 @@
-"plans/"  
+# 本地计划文档
+plans/
+
+# Go 编译产物
+web/realm_web
+*.exe
+
+# IDE
+.idea/
+.vscode/
+
+# 临时文件
+*.log
+*.tmp
