@@ -30,17 +30,13 @@
 
 ```
 ## 一键脚本：
-国内或v6 only可用（推荐）
+推荐使用（直接从仓库下载最新版）
 ```
-curl -L https://host.wxgwxha.eu.org/https://github.com/wsuming97/vps-Realm/releases/download/v3.1.2/realm.sh -o realm.sh && chmod +x realm.sh &&  ./realm.sh
+curl -L https://raw.githubusercontent.com/wsuming97/vps-Realm/main/realm.sh -o realm.sh && chmod +x realm.sh && ./realm.sh
 ```
-或
+国内加速（需要代理服务可用）
 ```
-curl -L https://github.com/wsuming97/vps-Realm/releases/download/v3.1.21/realm.sh -o realm.sh && chmod +x realm.sh &&  ./realm.sh
-```
-或
-```
-curl -L https://raw.githubusercontent.com/wsuming97/vps-Realm/refs/heads/main/realm.sh -o realm.sh && chmod +x realm.sh &&  ./realm.sh
+curl -L https://host.wxgwxha.eu.org/https://raw.githubusercontent.com/wsuming97/vps-Realm/main/realm.sh -o realm.sh && chmod +x realm.sh && ./realm.sh
 ```
 ## 默认配置文件（脚本在首次部署环境时会自动添加）
 ```
