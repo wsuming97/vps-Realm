@@ -112,6 +112,26 @@ func LoadNodesConfig() error {
 	return nil
 }
 
+// SaveNodesConfig 保存节点配置到 nodes.toml
+func SaveNodesConfig() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	var buf bytes.Buffer
+	buf.WriteString("# 节点配置\n")
+
+	for _, node := range nodesConfig.Nodes {
+		buf.WriteString("[[nodes]]\n")
+		buf.WriteString(fmt.Sprintf("name = %q\n", node.Name))
+		buf.WriteString(fmt.Sprintf("host = %q\n", node.Host))
+		buf.WriteString(fmt.Sprintf("port = %d\n", node.Port))
+		buf.WriteString(fmt.Sprintf("password = %q\n", node.Password))
+		buf.WriteString(fmt.Sprintf("https = %v\n\n", node.HTTPS))
+	}
+
+	return os.WriteFile("./nodes.toml", buf.Bytes(), 0644)
+}
+
 func SaveConfig() error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -296,6 +316,66 @@ func main() {
 
 		authorized.GET("/api/nodes", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"nodes": nodesConfig.Nodes})
+		})
+
+		// 添加节点
+		authorized.POST("/api/nodes", func(c *gin.Context) {
+			var node Node
+			if err := c.ShouldBindJSON(&node); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据"})
+				return
+			}
+
+			// 验证必填字段
+			if node.Name == "" || node.Host == "" || node.Port == 0 || node.Password == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "名称、主机、端口和密码为必填项"})
+				return
+			}
+
+			nodesConfig.Nodes = append(nodesConfig.Nodes, node)
+			if err := SaveNodesConfig(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败: " + err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "节点添加成功", "nodes": nodesConfig.Nodes})
+		})
+
+		// 删除节点
+		authorized.DELETE("/api/nodes/:id", func(c *gin.Context) {
+			id, err := strconv.Atoi(c.Param("id"))
+			if err != nil || id < 0 || id >= len(nodesConfig.Nodes) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "节点不存在"})
+				return
+			}
+
+			// 删除指定索引的节点
+			nodesConfig.Nodes = append(nodesConfig.Nodes[:id], nodesConfig.Nodes[id+1:]...)
+			if err := SaveNodesConfig(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败: " + err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "节点删除成功", "nodes": nodesConfig.Nodes})
+		})
+
+		// 测试节点连接
+		authorized.POST("/api/nodes/:id/test", func(c *gin.Context) {
+			id, err := strconv.Atoi(c.Param("id"))
+			if err != nil || id < 0 || id >= len(nodesConfig.Nodes) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "节点不存在"})
+				return
+			}
+
+			node := nodesConfig.Nodes[id]
+			resp, err := proxyToNode(node, http.MethodGet, "/check_status", nil)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"success": false, "error": "连接失败: " + err.Error()})
+				return
+			}
+			defer resp.Body.Close()
+
+			c.JSON(http.StatusOK, gin.H{"success": true, "message": "连接成功"})
 		})
 
 		authorized.GET("/api/nodes/:id/rules", func(c *gin.Context) {

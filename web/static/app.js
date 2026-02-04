@@ -98,7 +98,170 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.onclick = () => selectNode(index);
             container.appendChild(btn);
         });
+
+        // 添加管理节点按钮
+        const manageBtn = document.createElement('button');
+        manageBtn.textContent = '⚙ 管理节点';
+        manageBtn.className = 'node-btn manage-btn';
+        manageBtn.onclick = () => showNodeManager();
+        container.appendChild(manageBtn);
     }
+
+    // 显示节点管理对话框
+    function showNodeManager() {
+        let modal = document.getElementById('nodeManagerModal');
+        if (!modal) {
+            modal = createNodeManagerModal();
+            document.body.appendChild(modal);
+        }
+        renderNodeList();
+        modal.style.display = 'flex';
+    }
+
+    // 创建节点管理模态框
+    function createNodeManagerModal() {
+        const modal = document.createElement('div');
+        modal.id = 'nodeManagerModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>节点管理</h3>
+                    <button class="modal-close" onclick="document.getElementById('nodeManagerModal').style.display='none'">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="node-form">
+                        <h4>添加新节点</h4>
+                        <div class="form-row">
+                            <input type="text" id="nodeName" placeholder="节点名称" />
+                            <input type="text" id="nodeHost" placeholder="IP 地址" />
+                        </div>
+                        <div class="form-row">
+                            <input type="number" id="nodePort" placeholder="端口 (默认 8081)" value="8081" />
+                            <input type="password" id="nodePassword" placeholder="面板密码" />
+                        </div>
+                        <div class="form-row">
+                            <label><input type="checkbox" id="nodeHttps" /> 使用 HTTPS</label>
+                            <button class="btn-add-node" onclick="addNode()">添加节点</button>
+                        </div>
+                    </div>
+                    <div class="node-list-container">
+                        <h4>已配置节点</h4>
+                        <div id="managedNodeList"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return modal;
+    }
+
+    // 渲染节点列表
+    function renderNodeList() {
+        const container = document.getElementById('managedNodeList');
+        if (!container) return;
+        
+        if (nodes.length === 0) {
+            container.innerHTML = '<p class="no-nodes">暂无配置的远程节点</p>';
+            return;
+        }
+
+        container.innerHTML = nodes.map((node, index) => `
+            <div class="managed-node-item">
+                <div class="node-info">
+                    <strong>${node.name}</strong>
+                    <span>${node.host}:${node.port}</span>
+                    <span class="node-protocol">${node.https ? 'HTTPS' : 'HTTP'}</span>
+                </div>
+                <div class="node-actions">
+                    <button class="btn-test" onclick="testNode(${index})">测试</button>
+                    <button class="btn-delete" onclick="deleteNode(${index})">删除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 添加节点
+    window.addNode = async function() {
+        const name = document.getElementById('nodeName').value.trim();
+        const host = document.getElementById('nodeHost').value.trim();
+        const port = parseInt(document.getElementById('nodePort').value) || 8081;
+        const password = document.getElementById('nodePassword').value;
+        const https = document.getElementById('nodeHttps').checked;
+
+        if (!name || !host || !password) {
+            alert('请填写节点名称、IP地址和密码');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, host, port, password, https })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                nodes = data.nodes || [];
+                renderNodeList();
+                renderNodeSelector();
+                // 清空表单
+                document.getElementById('nodeName').value = '';
+                document.getElementById('nodeHost').value = '';
+                document.getElementById('nodePort').value = '8081';
+                document.getElementById('nodePassword').value = '';
+                document.getElementById('nodeHttps').checked = false;
+                alert('节点添加成功');
+            } else {
+                alert(data.error || '添加失败');
+            }
+        } catch (error) {
+            alert('添加节点失败: ' + error.message);
+        }
+    };
+
+    // 测试节点连接
+    window.testNode = async function(index) {
+        try {
+            const response = await fetch(`/api/nodes/${index}/test`, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                alert('✓ 连接成功');
+            } else {
+                alert('✗ 连接失败: ' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            alert('测试失败: ' + error.message);
+        }
+    };
+
+    // 删除节点
+    window.deleteNode = async function(index) {
+        if (!confirm(`确定要删除节点 "${nodes[index].name}" 吗？`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/nodes/${index}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (response.ok) {
+                nodes = data.nodes || [];
+                renderNodeList();
+                renderNodeSelector();
+                // 如果删除的是当前选中的节点，切换到本机
+                if (currentNodeId === index) {
+                    selectNode(-1);
+                } else if (currentNodeId > index) {
+                    currentNodeId--;
+                }
+                alert('节点删除成功');
+            } else {
+                alert(data.error || '删除失败');
+            }
+        } catch (error) {
+            alert('删除节点失败: ' + error.message);
+        }
+    };
 
     async function selectNode(nodeId) {
         currentNodeId = nodeId;
