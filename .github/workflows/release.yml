@@ -1,0 +1,68 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build for Linux AMD64
+        run: |
+          cd web
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o realm_web main.go
+          zip -r ../realm-panel-linux-amd64.zip realm_web config.toml nodes.toml static templates
+          rm realm_web
+
+      - name: Build for Linux ARM64
+        run: |
+          cd web
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o realm_web main.go
+          zip -r ../realm-panel-linux-arm64.zip realm_web config.toml nodes.toml static templates
+          rm realm_web
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Realm 一键转发脚本 ${{ steps.get_version.outputs.VERSION }}
+            
+            ### 一键安装命令
+            ```bash
+            curl -L https://raw.githubusercontent.com/${{ github.repository }}/main/realm.sh -o realm.sh && chmod +x realm.sh && ./realm.sh
+            ```
+            
+            ### 更新内容
+            - 多节点集中管理功能
+            - 部署脚本优化
+            - Bug 修复
+            
+            ### 下载说明
+            - `realm-panel-linux-amd64.zip` - x86_64 架构服务器
+            - `realm-panel-linux-arm64.zip` - ARM64 架构服务器
+            - `realm.sh` - 一键管理脚本
+          files: |
+            realm-panel-linux-amd64.zip
+            realm-panel-linux-arm64.zip
+            realm.sh
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
