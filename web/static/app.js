@@ -532,6 +532,165 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 节点管理模态框函数
+    function openNodeManager() {
+        const modal = document.getElementById('nodeManagerModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            loadManagedNodes();
+        }
+    }
+
+    function closeNodeManager() {
+        const modal = document.getElementById('nodeManagerModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function closeNodeManagerOnOverlay(event) {
+        if (event.target.id === 'nodeManagerModal') {
+            closeNodeManager();
+        }
+    }
+
+    async function loadManagedNodes() {
+        try {
+            const response = await fetch('/api/nodes');
+            if (!response.ok) throw new Error('加载节点失败');
+            const nodesList = await response.json();
+            renderManagedNodes(nodesList);
+        } catch (error) {
+            console.error('加载节点列表失败:', error);
+        }
+    }
+
+    function renderManagedNodes(nodesList) {
+        const container = document.getElementById('managedNodeList');
+        if (!container) return;
+        
+        if (!nodesList || nodesList.length === 0) {
+            container.innerHTML = '<div class="no-nodes">暂无远程节点，请添加</div>';
+            return;
+        }
+
+        container.innerHTML = nodesList.map((node, index) => `
+            <div class="managed-node-item">
+                <div class="node-info">
+                    <strong>${node.name || '未命名节点'}</strong>
+                    <span>${node.host}:${node.port}</span>
+                    <span class="node-protocol">${node.https ? 'HTTPS' : 'HTTP'}</span>
+                </div>
+                <div class="node-actions">
+                    <button class="btn-test" onclick="testNode(${index})">测试</button>
+                    <button class="btn-delete" onclick="deleteNode(${index})">删除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function addNode() {
+        const name = document.getElementById('nodeName').value.trim();
+        const host = document.getElementById('nodeHost').value.trim();
+        const port = parseInt(document.getElementById('nodePort').value) || 8081;
+        const username = document.getElementById('nodeUsername').value.trim();
+        const password = document.getElementById('nodePassword').value;
+
+        if (!host) {
+            showNotice('请输入节点IP地址或域名', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, host, port, username, password, https: false })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || '添加节点失败');
+            }
+
+            showNotice('节点添加成功', 'success');
+            document.getElementById('nodeName').value = '';
+            document.getElementById('nodeHost').value = '';
+            document.getElementById('nodePort').value = '8081';
+            document.getElementById('nodeUsername').value = '';
+            document.getElementById('nodePassword').value = '';
+            
+            await loadManagedNodes();
+            await loadNodes();
+        } catch (error) {
+            showNotice(error.message, 'error');
+        }
+    }
+
+    async function deleteNode(index) {
+        if (!confirm('确定删除此节点？')) return;
+
+        try {
+            const response = await fetch(`/api/nodes/${index}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                throw new Error('删除节点失败');
+            }
+
+            showNotice('节点已删除', 'success');
+            await loadManagedNodes();
+            await loadNodes();
+        } catch (error) {
+            showNotice(error.message, 'error');
+        }
+    }
+
+    async function testNode(index) {
+        try {
+            showNotice('正在测试连接...', 'info');
+            const response = await fetch(`/api/nodes/${index}/test`);
+            const result = await response.json();
+
+            if (result.success) {
+                showNotice(`节点连接成功! 延迟: ${result.latency}ms`, 'success');
+            } else {
+                showNotice(`节点连接失败: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            showNotice('测试请求失败: ' + error.message, 'error');
+        }
+    }
+
+    async function testNewNode() {
+        const host = document.getElementById('nodeHost').value.trim();
+        const port = parseInt(document.getElementById('nodePort').value) || 8081;
+
+        if (!host) {
+            showNotice('请先输入节点地址', 'error');
+            return;
+        }
+
+        try {
+            showNotice('正在测试连接...', 'info');
+            const response = await fetch('/api/nodes/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host, port, https: false })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                showNotice(`连接成功! 延迟: ${result.latency}ms`, 'success');
+            } else {
+                showNotice(`连接失败: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            showNotice('测试请求失败: ' + error.message, 'error');
+        }
+    }
+
     window.goToPrevPage = goToPrevPage;
     window.goToNextPage = goToNextPage;
     window.changePageSize = changePageSize;
@@ -540,6 +699,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addBatchRules = addBatchRules;
     window.controlService = controlService;
     window.logout = logout;
+    window.openNodeManager = openNodeManager;
+    window.closeNodeManager = closeNodeManager;
+    window.closeNodeManagerOnOverlay = closeNodeManagerOnOverlay;
+    window.addNode = addNode;
+    window.deleteNode = deleteNode;
+    window.testNode = testNode;
+    window.testNewNode = testNewNode;
 
     loadNodes();
     fetchForwardingRules();

@@ -754,6 +754,7 @@
                     <span class="status-dot"></span>
                     <span class="status-text">已停止</span>
                 </div>
+                <button class="nav-icon" onclick="openNodeManager()" title="管理节点">⚙️</button>
                 <button class="nav-icon" onclick="logout()" title="登出">🚪</button>
             </div>
         </div>
@@ -836,6 +837,43 @@
                         <textarea id="batchRules" placeholder="10000,192.168.1.1,443&#10;10001,192.168.1.2,80&#10;10002,192.168.1.3,22"></textarea>
                     </div>
                     <button class="btn-submit" onclick="addBatchRules()">批量添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 节点管理模态框 -->
+    <div id="nodeManagerModal" class="modal-overlay" onclick="closeNodeManagerOnOverlay(event)">
+        <div class="glass-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>⚙️ 节点管理</h3>
+                <button class="modal-close" onclick="closeNodeManager()">×</button>
+            </div>
+            <div class="modal-body" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
+                <!-- 添加节点表单 -->
+                <div style="margin-bottom: 20px;">
+                    <h4 style="font-size: 14px; margin-bottom: 15px; color: #333;">➕ 添加远程节点</h4>
+                    <div class="modal-form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <input type="text" id="nodeName" placeholder="节点名称（如：香港节点）" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;">
+                        <input type="text" id="nodeHost" placeholder="IP地址或域名" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;">
+                    </div>
+                    <div class="modal-form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <input type="number" id="nodePort" placeholder="端口（默认8081）" value="8081" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;">
+                        <input type="text" id="nodeUsername" placeholder="用户名" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;">
+                        <input type="password" id="nodePassword" placeholder="密码" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-add-node" onclick="addNode()">添加节点</button>
+                        <button class="btn-test" onclick="testNewNode()">测试连接</button>
+                    </div>
+                </div>
+                
+                <!-- 节点列表 -->
+                <div class="node-list-container">
+                    <h4 style="font-size: 14px; margin-bottom: 15px; color: #333;">📋 已配置节点</h4>
+                    <div id="managedNodeList">
+                        <div class="no-nodes">暂无远程节点，请添加</div>
+                    </div>
                 </div>
             </div>
         </div>

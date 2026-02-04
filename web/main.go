@@ -359,7 +359,42 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"message": "节点删除成功", "nodes": nodesConfig.Nodes})
 		})
 
-		// 测试节点连接
+		// 测试新节点连接（添加前测试）
+		authorized.POST("/api/nodes/test", func(c *gin.Context) {
+			var node Node
+			if err := c.ShouldBindJSON(&node); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+				return
+			}
+
+			if node.Host == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "请输入节点地址"})
+				return
+			}
+			if node.Port == 0 {
+				node.Port = 8081
+			}
+
+			scheme := "http"
+			if node.HTTPS {
+				scheme = "https"
+			}
+
+			start := time.Now()
+			client := &http.Client{Timeout: 5 * time.Second}
+			resp, err := client.Get(fmt.Sprintf("%s://%s:%d/login", scheme, node.Host, node.Port))
+			latency := time.Since(start).Milliseconds()
+
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"success": false, "error": "连接失败: " + err.Error()})
+				return
+			}
+			defer resp.Body.Close()
+
+			c.JSON(http.StatusOK, gin.H{"success": true, "latency": latency})
+		})
+
+		// 测试已保存节点连接
 		authorized.POST("/api/nodes/:id/test", func(c *gin.Context) {
 			id, err := strconv.Atoi(c.Param("id"))
 			if err != nil || id < 0 || id >= len(nodesConfig.Nodes) {
